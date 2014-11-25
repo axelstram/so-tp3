@@ -105,13 +105,45 @@ Las tareas a matar pertenecen a trabajos sobrecargados, y se buscan las m\'as re
 
 Los autores analizaron y abordaron los problemas cl\'asicos que todos los schedulers presentan con Map-Reduce y \emph{Hadoop}: localidad y dependencia.
 
-\subsubsection{Localidad de datos}
+\subsubsection{Delayed Scheduling}
 
 El primer problema de localidad que notaron los autores fue en los trabajos cortos. Ellos nombran al comportamiento causante de esto \emph{head-of-line scheduling}. En cada momento, hay un trabajo que debe recibir el pr\'oximo slot seg\'un el scheduler: el trabajo con m\'as slots de diferencia por debajo que la cantidad justa (el \emph{head-of-line}). Cualquier nodo esclavo que pida una tarea recibe una de este trabajo. Sin embargo, si este trabajo es pequenio, hay muy pocas posibilidades de que sus bloques de entrada est\'en disponibles en el esclavo. Este problema estaba presente en todos los schedulers de \emph{Hadoop} en ese momento.
 
 \vspace{2mm}
 
-El problema presentado deriva de la falta de elecci\'on del scheduler, seguir un orden de asignaci\'on estricto fuerza que se seleccione un trabajo sin datos locales. La soluci\'on de los autores a este problema tiene por nombre \textbf{Delayed scheduling}. Cuando un nodo solicita una tarea, si el trabajo al principio de la fila no posee una tarea local, se saltea y se busca en los siguientes trabajos. Sin embargo, si un trabajo fue demasiado salteado, se le permite lanzar tareas no locales para prevenir \emph{starvation}.
+El problema presentado deriva de la falta de elecci\'on del scheduler, seguir un orden de asignaci\'on estricto fuerza que se seleccione un trabajo sin datos locales. La soluci\'on de los autores a este problema tiene por nombre \textbf{Delayed scheduling}. Cuando un nodo solicita una tarea, si el trabajo al principio de la fila no posee una tarea local, se saltea y se busca en los siguientes trabajos. Sin embargo, si un trabajo fue demasiado salteado, se le permite lanzar tareas no locales para prevenir \emph{starvation}. 
+
+\vspace{2mm}
+
+Se tienen dos timers, $T1$ y $T2$. Los trabajos inicialmente s\'olo pueden lanzar tareas locales. Si se cumple $T1$, se le permite lanzar tareas del mismo \emph{rack}. Si se cumple $T2$, se le permite lanzar tareas fuera del \emph{rack}. Si un trabajo inicia una tarea \emph{mas local} que el nivel en el que est\'a, vuelve a un nivel anterior, de forma de que si un trabajo tiene mala suerte al inicio de su vida no se queda lanzando tareas no locales para siempre.
+
+\vspace{2mm}
+
+(ACA VEO SI ESCRIBO ALGO DE LOS ANALISIS DE ESTO)
+
+\subsubsection{Copy-Compute Splitting}
+
+Como se explic\'o anteriormente, las funciones Map generan resultados intermedios, que almacenan en disco, y las funciones Reduce copian estos resultados, y luego deben esperar que todas las Map finalicen para generar la reducci\'on. Esto genera acumulaci\'on de slots de Reduce por parte de trabajos largos que a\'un no pueden ejecutar, generando \emph{starvation} para trabajos cortos y subutilizando recursos.
+
+\vspace{2mm} 
+
+El problema subyacente es que una funci\'on reduce se divide en dos operaciones con requerimientos de recursos distintos. Una copia intensiva de E/S y una reducci\'on intensiva de CPU. En cada momento, un slot se encuentra copiando, usando E/S, o computando, usando CPU, y nunca ambas cosas. Dado que las funciones Reduce se disparan cuando finalizan las Map, se ejecutan en \emph{olas}, causando que todos los slots se encuentren o copiando o computando en un momento dado. Los trabajos se ejecutar\'ian m\'as eficientemente si ambas etapas pudiesen superponerse. Los autores presentan una soluci\'on llamada \emph{copy-compute splitting}, que divide los Reduce en dos tareas: \textbf{copiar y computar}.
+
+\vspace{2mm} 
+
+Las tareas \textbf{copiar} hacen \emph{fetch} y \emph{merge} de la salida de las funciones Map, operaciones de entrada y salida de red. Las tereas \emph{computar} aplican la funci\'on reduce del usuario a la salida de Map. Esto fue implementado agregando una etapa de control de admisi\'on a los procesos Reduce originales de \emph{Hadoop}. Cuando una funci\'on reduce termina de copiar y mergear, pide permiso a su esclavo para iniciar la fase computar. El esclavo limita la cantidad de funciones reduccice computando en un momento dado. Esto permite a los nodos ejecutar m\'as funciones reduce que los slots de c\'omputo que posee. Tambi\'en limita el n\'umero de funciones reduce en fase de copiar de un nodo a la cantidad de slots de c\'omputo que posee, permitiendo a otros trabajos usar los restantes slots.
+
+(VER SI HABLO ALGO DE BATCH)
+
+\vspace{2mm} 
+
+\subsubsection{Tiempo de respuesta Batch}
+
+Contraintuitivamente, un scheduler de algoritmo FIFO puede ser m\'as efectivo en el tiempo de respuesta de las tareas \emph{batch}, incluso con \emph{copy-compute splitting} activado. Esto se debe a que con \emph{fair sharing}, suponiendo dos tareas iniciales, ambas se dividen los recursos y ejecutan al mismo tiempo tareas Map, compiten por la E/S, y luego ambos ejecutan tareas Reduce. En cambio, con un algoritmo FIFO, la primer tarea recibe los slots de Map, y cuando \'esta termina y pasa a la etapa Reduce, la segunda tarea comienza con las tareas Map, generando un pipeline de c\'omputo, acelerando la ejecuci\'on total. Los autores encontraron que el tiempo de respuesta \emph{batch} para el algoritmo FIFO es igual o superior a cualquier otro.
+
+\subsubsection{Utilizaci\'on de espacio en disco}
+
+Una consecuencia final de la dependencia de datos, es la alta utilizaci\'on de espacio en disco para el almacenamiento de los resultados intermedios de las funciones Map. Los autores encontraron que un scheduler FIFO vuelve a sacar ventaja, ya que usa el m\'inimo espacio requerido por las tareas por correrlas secuencialmente. \emph{Fair sharing} puede usar $N$ veces m\'as espacio, siendo $N$ la cantidad de usuarios del cluster.
 
 \subsection{Evaluac\'on}
 
