@@ -119,7 +119,6 @@ Se tienen dos timers, $T1$ y $T2$. Los trabajos inicialmente s\'olo pueden lanza
 
 \vspace{2mm}
 
-(ACA VEO SI ESCRIBO ALGO DE LOS ANALISIS DE ESTO)
 
 \subsubsection{Copy-Compute Splitting}
 
@@ -133,8 +132,6 @@ El problema subyacente es que una funci\'on reduce se divide en dos operaciones 
 
 Las tareas \textbf{copiar} hacen \emph{fetch} y \emph{merge} de la salida de las funciones Map, operaciones de entrada y salida de red. Las tereas \emph{computar} aplican la funci\'on reduce del usuario a la salida de Map. Esto fue implementado agregando una etapa de control de admisi\'on a los procesos Reduce originales de \emph{Hadoop}. Cuando una funci\'on reduce termina de copiar y mergear, pide permiso a su esclavo para iniciar la fase computar. El esclavo limita la cantidad de funciones reduccice computando en un momento dado. Esto permite a los nodos ejecutar m\'as funciones reduce que los slots de c\'omputo que posee. Tambi\'en limita el n\'umero de funciones reduce en fase de copiar de un nodo a la cantidad de slots de c\'omputo que posee, permitiendo a otros trabajos usar los restantes slots.
 
-(VER SI HABLO ALGO DE BATCH)
-
 \vspace{2mm} 
 
 \subsubsection{Tiempo de respuesta Batch}
@@ -145,6 +142,60 @@ Contraintuitivamente, un scheduler de algoritmo FIFO puede ser m\'as efectivo en
 
 Una consecuencia final de la dependencia de datos, es la alta utilizaci\'on de espacio en disco para el almacenamiento de los resultados intermedios de las funciones Map. Los autores encontraron que un scheduler FIFO vuelve a sacar ventaja, ya que usa el m\'inimo espacio requerido por las tareas por correrlas secuencialmente. \emph{Fair sharing} puede usar $N$ veces m\'as espacio, siendo $N$ la cantidad de usuarios del cluster.
 
-\subsection{Evaluac\'on}
+\subsection{Testing y evaluac\'on}
 
-\subsection{Discusi\'on}
+Los autores evaluaron el scheduler previamente presentado mediante un \emph{Microbenchmark} que muestra los efectos particulares de los componentes, y un \emph{Macrobenchmark} que simula la carga de trabajo multi-usuario de \emph{Facebook}. Los experimentos fueron realizados en tres cl\'usters: \emph{Amazon Elastic Compute Cloud}, un \emph{hosting enviroment} virtual comercial, un cluster de 100 nodos y uno de 450. Para generar la carga de trabajos se utiliz\'o \emph{Loadgen}, un trabajo configurable que tiene dos porcentajes, $keepMap$, que es el porcentaje de los datos de input que devuelven las tareas map, y $keepReduce$, el porcentaje de ouput de Map que devuelven las tareas Reduce.
+
+\subsubsection{Macrobenchmark}
+
+Se evalu\'o un benchmark multi-usuario en el cluster de \emph{Amazon}, con trabajos basados en la carga de \emph{Facebook}. Se us\'o $Loadgen$ con porcentajes random y tiempo de CPU random por trabajo. Consisti\'o en 50 trabajos, de 9 tamanios diferentes, y una cantidad de trabajos por cada tamanio proporcional al de \emph{Facebook} para cada tamanio. Los benchmarks corrieron aproximadamente 30-40 minutos y se compar\'o el scheduler FIFO y el FAIR, con y sin \emph{compy-compute splitting}, y FAIR con \emph{compy-compute splitting} y \emph{delay scheduling}.
+
+\vspace{2mm}
+
+Los resultados mostraron que \emph{fair sharing} puede reducir los tiempos de respuesta a la mitad con respecto a FIFO en trabajos cortos, pero los trabajos largos tardan ligeramente m\'as tiempo. FAIR con \emph{c-c splitting} mejora la velocidad en un $4.6x$ para trabajos cortos, y $1.8-2x$ para los promedio. FIFO \emph{c-c splitting} mejora el tiempo pero sus mejoras son menos notables a las de FAIR.
+
+\vspace{2mm}
+
+El agregado de \emph{delay scheduling} no cambia el tiempo de respuesta de FAIR con \emph{c-c splitting}. Sin embargo, incrementa la localidad a $99-100\%$, cuando originalmente era $15-95\%$, lo cual incrementa el throughput en clusters con menor banda ancha. En resumen, para trabajos cortos y medios, las mejoras promedio fueron de $2.5-5x$, con m\'aximos de $14x$.
+
+\subsubsection{Microbenchmarks}
+
+Se realizaron los siguientes experimentos:
+
+\begin{itemize}
+
+\item \emph{Delay scheduling} y localidad: Se testearon los efectos de esta t\'ecnica en la localidad de trabajos cortos, generando tareas random y usando el cluster m\'as chico. Cada trabajo es map-only, simulando tareas de filtro de datos. Se corrieron trabajos de 3, 10 y 100 tareas, por 20 minutos en total. FIFO dio los mismos resultados que FAIR, tanto con \emph{delay scheduling} como sin.
+
+\emph{Delay scheduling} increment\'o el throughput por $1.2x$ para los trabajos de 3-map, $1.7x$ para los 10-map, y $1.3x$ para los 100-map, e increment\'o la localidad de datos en nodo hasta un $75\%$ y de rack hasta un $94\%$. La mejora de throughput es mayor para los trabajos de 10 map que para los de 100, ya que los trabajos de 100 maps ya tienen buena localidad de por si sin la t\'ecnica.
+
+\item \emph{Delay scheduling} y el tiempo de respuesta: Se testearon los efectos de esta t\'ecnica en el tiempo de respuesta de trabajos 16-map y 1-reduce cada uno. Se corri\'o cada trabajo ocho veces. Corriendo solo, cada trabajo tard\'o entre $32-37s$, y con \emph{delay scheduling}, $32-38s$. No hubo diferencia en tiempo de respuesta, pero la localidad aument\'o de $25\%$ a $100\%$.
+
+\item Carga de E/S: Se cre\'o un archivo de 2GB con triple r\'eplica. Se simularon 20 trabajadores, que iniciaban trabajos durante 20 minutos. 10 se dedicaron a inciar trabajos E/S intensivos, y los otros 10 CPU intensivos. Luego de pasar 10 minutos se cuenta el total de trabajos terminados. Para \emph{delay scheduling} sin modificaciones se obtuvo el peor throughput y tiempo de respuesta. Desactivandolo se obtuvieron mejores resultados, simplemente porque las tareas CPU, que no utilizan E/S, pueden iniciar m\'as r\'apido. Sin embargo, utilizando \emph{delay scheduling} con \emph{IO-rate biasing}, es decir, retardando s\'olo las tareas de los trabajadores E/S llev\'o a la mejor performance posible, con una mejora de $8\%$ para E/S y $10\%$ para CPU.
+
+\item \emph{Copy-Compute splitting} para un solo trabajo: los autores notaron una mejora del $9\%$ en un solo trabajo para un solo usuario, debido a que hay poca mejora para t\'ecnica a menos que el ancho de banda sea limitado. Esperan mejores resultados para clusers de mayor tamanio.
+
+\end{itemize}
+
+\subsection{Discusi\'on y conclusiones}
+
+A pesar de que Map-Reduce nace como un modelo popular para la ejecuci\'on de tareas \emph{batch}, muchas organizaciones comenzaron a compartir sus clusters de \emph{Hadoop} Map-Reduce entre diversos usuarios, corriendo tareas \emph{batch}, pero adem\'as tareas cortas e interactivas. El trabajo nace de la necesidad de un scheduler eficiente para este nuevo caso de uso, ya que el scheduler base FIFO presentaba diversos problemas. Los autores desarrollaron y presentan FAIR, un scheduler que provee aislamiento, garantiza una cantidad de slots m\'inica para cada trabajo y logra \emph{statistical multiplexing}.
+
+\vspace{2mm}
+
+El trabajo de los autores se relaciona con la discusi\'on y \emph{trade-off} entre tener un cluster privado para cada usuario, que brinda el mejor aislamiento, pero provoca subutilizaci\'on y es costoso, y tener un \'unico cluster FIFO, que provee la mejor utilizaci\'on de los recursos pero aislamiento pobre. El objetivo de los autores fue buscar y encontrar un punto medio entre ambas cosas, compartir un cluster eficientemente, brindar a cada usuario tiempos de respuesta similares a clusteres privados y consolidar los datos, teniendo grandes vol\'umenes de datos para el uso de aplicaciones que no podr\'ian correrse en clusteres pequenios con los datos particionados. Los problemas m\'as t\'ipicos presentados en clusters Map-Reduce, la localidad y la interdependencia de datos, se presentan en la mayor\'ia de los servidores que usan grafos ac\'iclicos para modelar y gestionar procesos, por lo que las t\'ecnicas presentadas por los autores, \emph{delay scheduling} y \emph{copy-compute splitting} pueden usarse en cualquier sistema basado en flujo de datos.
+
+\vspace{2mm}
+
+Los autores, luego de su trabajo de investigaci\'on se toman la libertad de brindar algunas recomendaciones acerca de la gesti\'on de scheduling de clusters multi-usuario. En resumen:
+
+\begin{itemize}
+
+\item \textbf{Tareas cortas:} mantener preferencia por tareas cortas y livianas. De esta forma, los trabajos pueden iniciar m\'as r\'apidamente. Limitar los recursos de cada tarea incrementa las oportunidades de scheduling.
+
+\item \textbf{Pausar tareas largas:} Si son necesarias tareas largas, permitir pausarlas. Por ejemplo, pausar tareas de copia para controlar la carga en los esclavos.
+
+\item \textbf{Tradeoff:} Si se requiere aislamiento, se debe sacrificar throughput, como lo ilustra \emph{Delay Scheduling}.
+
+\item \textbf{Localidad de c\'odigo:} Es beneficioso correr m\'ultiples tareas de un trabajo en el mismo nodo, ya que se amortiza el costo de copiar el c\'odigo del trabajo al nodo.
+
+\end{itemize}
