@@ -74,14 +74,19 @@ Los autores desarrollaron el scheduler \textbf{FAIR}, como ua soluci\'on a los p
 
 \vspace{2mm}
 
-INSERTAR POOOOOOOOOOOOOOOOOOOOOLS
-
 FAIR posee dos niveles de jerarqu\'ia. En el nivel superior, FAIR asigna slots de tarea en \textbf{pools}, en el segundo nivel, cada pool
 asigna sus slots entre m\'ultiples trabajos. FAIR usa una versi\'on de \emph{min-max fairness} para la asignaci\'on de slots entre pools. Se define una cantidad m\'inima de slots para cada pool, y el scheduler se asegura de que en todo momento, cada pool tenga al menos esta cantidad de slots, y la suma de estas cantidades no supere los slots m\'aximos soportados por el sistema.
 
 \vspace{2mm}
 
 En la pr\'actica, se crea una pool por usuario y pools especiales para trabajos de producci\'on. ESto asegura para cada usuario una performance al menos id\'entica a la que tendr\'ian en un cluster \emph{Hadoop} de tamanio igual a su cantidad m\'inima, pero gracias al \emph{statistical multiplexing}, a menudo mayor. FAIR usa el mismo algoritmo para asignar slots entre los trabajos de cada pool.
+
+\vspace{2mm}
+
+\begin{center}
+\includegraphics[scale=0.8]{pools.jpg}
+\end{center}
+ \textit{Diagrama de asignaci\'on de slots de FAIR'}.
 
 \vspace{2mm}
 
@@ -98,11 +103,15 @@ Las tareas a matar pertenecen a trabajos sobrecargados, y se buscan las m\'as re
 
 \subsection{Problemas asociados a FAIR y sus soluciones}
 
-Los autores analizaron y abordaron los problemas cl\'asicos que todos los schedulers presentan con Map-Reduce y \emph{Hadoop}:localidad y dependencia.
+Los autores analizaron y abordaron los problemas cl\'asicos que todos los schedulers presentan con Map-Reduce y \emph{Hadoop}: localidad y dependencia.
 
 \subsubsection{Localidad de datos}
 
-El primer problema de localidad que notaron los autores fue en los trabajos cortos.
+El primer problema de localidad que notaron los autores fue en los trabajos cortos. Ellos nombran al comportamiento causante de esto \emph{head-of-line scheduling}. En cada momento, hay un trabajo que debe recibir el pr\'oximo slot seg\'un el scheduler: el trabajo con m\'as slots de diferencia por debajo que la cantidad justa (el \emph{head-of-line}). Cualquier nodo esclavo que pida una tarea recibe una de este trabajo. Sin embargo, si este trabajo es pequenio, hay muy pocas posibilidades de que sus bloques de entrada est\'en disponibles en el esclavo. Este problema estaba presente en todos los schedulers de \emph{Hadoop} en ese momento.
+
+\vspace{2mm}
+
+El problema presentado deriva de la falta de elecci\'on del scheduler, seguir un orden de asignaci\'on estricto fuerza que se seleccione un trabajo sin datos locales. La soluci\'on de los autores a este problema tiene por nombre \textbf{Delayed scheduling}. Cuando un nodo solicita una tarea, si el trabajo al principio de la fila no posee una tarea local, se saltea y se busca en los siguientes trabajos. Sin embargo, si un trabajo fue demasiado salteado, se le permite lanzar tareas no locales para prevenir \emph{starvation}.
 
 \subsection{Evaluac\'on}
 
