@@ -1,6 +1,6 @@
 function() {
-    emit(this.username, {
-    	upvotes: number_of_upvotes,
+    emit(this.score, {
+    	comentarios: this.number_of_comments,
     	submision: 1
     });
 }

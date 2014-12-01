@@ -1,6 +1,6 @@
 \section{Map-Reduce}
 
-Intro de esta parte
+A continuaci\'on, la parte de experimentaci\'on del trabajo, en la cual se nos pidi\'o la implementaci\'on de diversas funciones MapReduce con el objetivo de conocer informaci\'on sobre la base de datos, que se compone de entradas del sitio web $Reddit$. La implementaci\'on se implement\'o con $Javascript$, y la base de datos con $MongoDB$.
 
 \subsection{Ejercicio 1}
 
@@ -13,7 +13,7 @@ El c\'odigo implementado es:
 \textbf{Map:}
 
 \begin{lstlisting}
-function() {
+map() {
     emit(this.subreddit, {
     	score: this.score,
     	submision: 1
@@ -190,23 +190,92 @@ El c\'odigo implementado es:
 \textbf{Map:}
 
 \begin{lstlisting}
-
+map() {
+    emit(this.score, {
+    	comentarios: this.number_of_comments,
+    	submision: 1
+    });
+}
 \end{lstlisting}
 
-
 \vspace{2mm}
+
+La funci\'on Map convierte las submisiones de entrada en tuplas que tienen como clave los distintos puntajes, y como valor la cantidad de comentarios de la submision, y un valor 1 para contar cada submisions.
 
 \textbf{Reduce:}
 
 \begin{lstlisting}
+reduce (key, values){
+   reducedValue = {comentarios : 0, submision : 0}
+	
+	var total_comentarios = 0;
+	var total_submisiones = 0;
+
+	for(i = 0; i < values.length; i++) {
+		total_comentarios += values[i].comentarios;
+	}
+
+	reducedValue.comentarios = total_comentarios;
+	reducedValue.submision = values.length;
+
+    return reducedValue;
+}
 
 \end{lstlisting}
 
+la funci\'on reduce toma las tuplas y para cada puntaje suma la cantidad total de comentarios y de submisiones, y devuelve la tupla (comentarios,submision) como valor. Cabe aclarar que dicha funci\'on es asociativa, commutativa e idempotente dado que se compone de dos sumatorias.
+
+\textbf{Finalize:}
+
+\begin{lstlisting}
+
+function (key, reducedValue) {
+  reducedValue.avg = reducedValue.comentarios / reducedValue.submision;
+  return reducedValue;
+}
+
+\end{lstlisting}
+
+Delegamos el c\'alculo de promedio en una funci\'on Reduce.
 
 \vspace{2mm}
 
 \subsubsection{Query en la base de datos}
 
+\begin{lstlisting}
+db.ej3.find().sort({"_id":-1}).limit(10)
+\end{lstlisting}
+
+
+Dividi\'endolo en pasos:
+
+\begin{itemize}
+
+\item \textbf{db.ej3.find()} Realizamos un $find()$, que retorna todos los documentos de la colecci\'on.
+\item \textbf{sort({"\_id":-1})} Ordenamos cada tupla de acuerdo a su $id$, que en este caso es el score, de forma descendiente.
+\item \textbf{limit(10)} Tomamos los primeros diez
+
+\end{itemize}
+
+Los puntajes son:
+
+\begin{enumerate}
+
+\item Score : \textbf{20570}, Promedio: \textbf{1463}
+\item Score : \textbf{12333}, Promedio: \textbf{1612} 
+\item Score : \textbf{11908}, Promedio: \textbf{2681} 
+\item Score : \textbf{10262}, Promedio: \textbf{1514} 
+\item Score : \textbf{8935}, Promedio: \textbf{480} 
+\item Score : \textbf{8835}, Promedio: \textbf{1716} 
+\item Score : \textbf{8699}, Promedio: \textbf{934} 
+\item Score : \textbf{8241}, Promedio: \textbf{571} 
+\item Score : \textbf{7297}, Promedio: \textbf{1110} 
+\item Score : \textbf{6741}, Promedio: \textbf{2204} 
+\item Score : \textbf{6568}, Promedio: \textbf{372} 
+\item Score : \textbf{6501}, Promedio: \textbf{990} 
+
+
+\end{enumerate}
 
 \subsection{Ejercicio 4}
 
