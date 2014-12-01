@@ -1,3 +1,6 @@
 function() {
-    emit(this.subreddit, this.score);
+    emit(this.subreddit, {
+    	score: this.score,
+    	submision: 1
+    });
 }

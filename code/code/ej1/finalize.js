@@ -1,5 +1,5 @@
 function (key, reducedValue) {
 
-  reducedValue.avg = reducedValue.total / reducedValue.size;
+  reducedValue.avg = reducedValue.score / reducedValue.submision;
   return reducedValue;
 }

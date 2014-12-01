@@ -13,14 +13,16 @@ El c\'odigo implementado es:
 \textbf{Map:}
 
 \begin{lstlisting}
-map() {
-    emit(this.subreddit, this.score);
+function() {
+    emit(this.subreddit, {
+    	score: this.score,
+    	submision: 1
+    });
 }
-
 
 \end{lstlisting}
 
-La funci\'on Map, "mapea"  la entrada en tuplas, que tienen por clave el subreddit de la submisi\'on, y por valor el puntaje de la submisi\'on de entrada.
+La funci\'on Map, "mapea"  la entrada en tuplas, que tienen por clave el subreddit de la submisi\'on, y por valor el puntaje de la submisi\'on de entrada, y adem\'as en el valor se agrega el campo submisi\'on de valor 1, contando la sumisi\'on actual que el Map est\'a procesando.
 
 \vspace{2mm}
 
@@ -29,15 +31,23 @@ La funci\'on Map, "mapea"  la entrada en tuplas, que tienen por clave el subredd
 \begin{lstlisting}
 
 reduce (key, values){
-    reducedValue = {size: 0, total: 0, avg: 0};
-    reducedValue.size = values.length;
-    reducedValue.total = Array.sum(values);
+   reducedValue = {score:0, submision: 0}
+
+    var total_score = 0;
+
+	for(i = 0; i < values.length; i++) {
+		total_score += values[i].score;
+	}
+
+	reducedValue.score = total_score;
+	reducedValue.submision = values.length;
+
     return reducedValue;
 }
 
 \end{lstlisting}
 
-La funci\'on reduce toma las tuplas intermedias salida del Map, y para cada clave suma los puntajes de todas sus submisiones, y guarda la cantidad de \'estas, de forma de poder calcular el promedio. Sin embargo, el c\'alculo de promedio debe delegarse a la siguiente instancia, para que la funci\'on Reduce siga siendo asociativa, conmutativa e idempotente, lo cual cumple porque se compone de una asignaci\'on y una sumatoria.
+La funci\'on reduce toma las tuplas intermedias salida del Map, y para cada clave suma los puntajes de todas sus submisiones, y guarda la cantidad de \'estas, de forma de poder calcular el promedio. Sin embargo, el c\'alculo de promedio debe delegarse a la siguiente instancia, para que la funci\'on Reduce siga siendo asociativa, conmutativa e idempotente, lo cual cumple porque se compone de una sumatoria.
 
 \vspace{2mm}
 
@@ -46,7 +56,7 @@ La funci\'on reduce toma las tuplas intermedias salida del Map, y para cada clav
 \begin{lstlisting}
 
 finalize (key, reducedValue) {
-  reducedValue.avg = reducedValue.total / reducedValue.size;
+  reducedValue.avg = reducedValue.score / reducedValue.submision;
   return reducedValue.avg;
 }
 
@@ -58,6 +68,25 @@ Es necesario la inclusi\'on de una funci\'on $Finalize$ que modifice la salida d
 
 \subsubsection{Query en la base de datos}
 
+
+\begin{lstlisting}
+db.ej1.find().sort({"value.avg":-1}).limit(1)
+\end{lstlisting}
+
+Realizamos un $find()$, que devuelve todos los documentos de la colecci\'on, y aplicamos la funci\'on $sort()$ en cuanto al promedio de forma descendiente, para tomar el primer elemento con $limit(1)$. Con fines did\'acticos, nos tomamos la libertad de aplicar $limit(5)$, de forma de obtener el top 5 y poder comparar mejor.
+
+\begin{enumerate}
+
+\item Subreddit: \textbf{WTF}, Promedio: \textbf{1244145} 
+\item Subreddit: \textbf{gifs}, Promedio: \textbf{154294}  
+\item Subreddit: \textbf{funny}, Promedio: \textbf{119566}  
+\item Subreddit: \textbf{pics}, Promedio: \textbf{54924}  
+\item Subreddit: \textbf{aww}, Promedio: \textbf{49331}  
+
+
+\end{enumerate}
+
+Por lo que el subreddit con mayor puntaje promedio es \textbf{WTF}.
 
 \subsection{Ejercicio 2}
 
@@ -154,7 +183,6 @@ Finalmente, los doce t\'itulos con mayor score de la colecci\'on de posts con al
 
 \subsection{Ejercicio 3}
 
-
 \subsubsection{C\'odigo Map-Reduce}
 
 El c\'odigo implementado es:
@@ -236,14 +264,14 @@ El procesamiento MapReduce nos da como resultado un conjunto de tuplas $\{usuari
 \vspace{2mm}
 
 \begin{lstlisting}
-db.ej2.find({"value.submisiones":{$lt:6\}}).sort({"value.upvotes":-1}).limit(1)
+db.ej4.find({"value.submisiones":{$lt:6\}}).sort({"value.upvotes":-1}).limit(1)
 \end{lstlisting}
 
 Dividi\'endolo en pasos:
 
 \begin{itemize}
 
-\item \textbf{db.ej2.find(\{"value.submisiones":\{\$\{lt:6\}\})}: se aplica la funci\'on find() en la base de datos para buscar aquellas entradas, en las que el atributo "value.votes" sea menor estricto a 6.
+\item \textbf{db.ej4.find(\{"value.submisiones":\{\$\{lt:6\}\})}: se aplica la funci\'on find() en la base de datos para buscar aquellas entradas, en las que el atributo "value.votes" sea menor estricto a 6.
 
 \item \textbf{sort(\{"value.upvotes":-1\})}: se ordenan estos valores segu\'un el atributo "value.score", en orden descendiente.
 
@@ -267,8 +295,7 @@ Por lo que el usuario con a lo sumo 5 submisiones y mayor cantidad de upvotes es
 
 \subsection{Ejercicio 5}
 
-La consigna de este ejercicio es, para todos los subrredit que poseen un score ente 280 y 300, indicar la cantidad palabras
-presentes en sus títulos
+La consigna de este ejercicio es, para todos los subrredit que poseen un score ente 280 y 300, indicar la cantidad palabras presentes en sus t\'itulos.
 
 \subsubsection{C\'odigo Map-Reduce}
 
@@ -326,7 +353,7 @@ La funci\'on reduce, similar a las de ejercicios anteriores, se limita a sumar p
 db.ej5.find({"value.score":{$lt:301,$gt:279\}})
 \end{lstlisting}
 
-Con la funci\'on $find()$ encontramos todas las tuplas y filtramos las que tienen puntaje menor estricto a 301 y mayor estricto a 279. No hace falta m\'as, ya que esto no provee las tuplas:
+Con la funci\'on $find()$ encontramos todas las tuplas y filtramos las que tienen puntaje menor estricto a 301 y mayor estricto a 279. No hace falta m\'as, ya que esto nos provee las tuplas:
 
 \begin{enumerate}
 

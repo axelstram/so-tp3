@@ -1,6 +1,14 @@
 function (key, values){
-    reducedValue = {size: 0, total: 0}
-    reducedValue.size = values.length;
-    reducedValue.total = Array.sum(values);
+    reducedValue = {score:0, submision: 0}
+
+    var total_score = 0;
+
+	for(i = 0; i < values.length; i++) {
+		total_score += values[i].score;
+	}
+
+	reducedValue.score = total_score;
+	reducedValue.submision = values.length;
+
     return reducedValue;
 }
