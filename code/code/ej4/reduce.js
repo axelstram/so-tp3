@@ -6,10 +6,12 @@ function (key, values){
 
 	for(i = 0; i < values.length; i++) {
 		total_upvotes += values[i].upvotes;
+		total_submisiones += values[i].submision;
+
 	}
 
-	reducedValue.upvotes = total_submisiones;
-	reducedValue.submision = values.length;
+	reducedValue.upvotes = total_upvotes;
+	reducedValue.submision = total_submisiones;
 
     return reducedValue;
 }

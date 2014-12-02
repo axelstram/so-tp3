@@ -31,18 +31,19 @@ La funci\'on Map, "mapea"  la entrada en tuplas, que tienen por clave el subredd
 \begin{lstlisting}
 
 reduce (key, values){
-   reducedValue = {score:0, submision: 0}
+    reducedValue = {score:0, submision: 0}
 
     var total_score = 0;
+    var total_submisiones = 0;
 
 	for(i = 0; i < values.length; i++) {
 		total_score += values[i].score;
+		total_submisiones += values[i].submision;
+
 	}
 
 	reducedValue.score = total_score;
-	reducedValue.submision = values.length;
-
-    return reducedValue;
+	reducedValue.submision = total_submisiones;
 }
 
 \end{lstlisting}
@@ -77,11 +78,11 @@ Realizamos un $find()$, que devuelve todos los documentos de la colecci\'on, y a
 
 \begin{enumerate}
 
-\item Subreddit: \textbf{WTF}, Promedio: \textbf{1244145} 
-\item Subreddit: \textbf{gifs}, Promedio: \textbf{154294}  
-\item Subreddit: \textbf{funny}, Promedio: \textbf{119566}  
-\item Subreddit: \textbf{pics}, Promedio: \textbf{54924}  
-\item Subreddit: \textbf{aww}, Promedio: \textbf{49331}  
+\item Subreddit: \textbf{GirlsGamers}, Promedio: \textbf{2438} 
+\item Subreddit: \textbf{worldnews}, Promedio: \textbf{2261}  
+\item Subreddit: \textbf{Android}, Promedio: \textbf{1972}  
+\item Subreddit: \textbf{TrueReddit}, Promedio: \textbf{1879}  
+\item Subreddit: \textbf{Games}, Promedio: \textbf{1677}  
 
 
 \end{enumerate}
@@ -183,6 +184,8 @@ Finalmente, los doce t\'itulos con mayor score de la colecci\'on de posts con al
 
 \subsection{Ejercicio 3}
 
+La consigna del ejercicio es, para los diez mejores scores, calcular la cantidad de comentarios en promedio por sumisi\'on.
+
 \subsubsection{C\'odigo Map-Reduce}
 
 El c\'odigo implementado es:
@@ -213,10 +216,12 @@ reduce (key, values){
 
 	for(i = 0; i < values.length; i++) {
 		total_comentarios += values[i].comentarios;
+		total_submisiones += values[i].submision;
+
 	}
 
 	reducedValue.comentarios = total_comentarios;
-	reducedValue.submision = values.length;
+	reducedValue.submision = total_submisiones;
 
     return reducedValue;
 }
@@ -313,10 +318,11 @@ reducedValue = {upvotes : 0, submision : 0}
 
 	for(i = 0; i < values.length; i++) {
 		total_upvotes += values[i].upvotes;
+		total_submisiones += values[i].submision;
 	}
 
-	reducedValue.upvotes = total_submisiones;
-	reducedValue.submision = values.length;
+	reducedValue.upvotes = total_upvotes;
+	reducedValue.submision = total_submisiones;
 
     return reducedValue;
 }
@@ -353,10 +359,10 @@ Con prop\'ositos did\'acticos, reemplazamos la funci\'on $limit(1)$ con $limit(5
 \begin{enumerate}
 
 \item Usuario: \textbf{lepty}, Upvotes: \textbf{90396} Submisiones: \textbf{1}
+\item Usuario: \textbf{gonzoblair}, Upvotes: \textbf{82381} Submisiones: \textbf{2}
+\item Usuario: \textbf{debuzzy}, Upvotes: \textbf{73789} Submisiones: \textbf{2}
+\item Usuario: \textbf{Viral\_Mind}, Upvotes: \textbf{73181} Submisiones: \textbf{5}
 \item Usuario: \textbf{Robert\_Houdin}, Upvotes: \textbf{67767} Submisiones: \textbf{1}
-\item Usuario: \textbf{RuffDesperado}, Upvotes: \textbf{64987} Submisiones: \textbf{1}
-\item Usuario: \textbf{frackyou}, Upvotes: \textbf{63392} Submisiones: \textbf{1}
-\item Usuario: \textbf{dwerb99}, Upvotes: \textbf{62048} Submisiones: \textbf{1}
 
 \end{enumerate}
 

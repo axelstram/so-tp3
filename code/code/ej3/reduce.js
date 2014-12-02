@@ -6,10 +6,12 @@ function (key, values){
 
 	for(i = 0; i < values.length; i++) {
 		total_comentarios += values[i].comentarios;
+		total_submisiones += values[i].submision;
+
 	}
 
 	reducedValue.comentarios = total_comentarios;
-	reducedValue.submision = values.length;
+	reducedValue.submision = total_submisiones;
 
     return reducedValue;
 }
